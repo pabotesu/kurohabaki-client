@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun"
 )
@@ -26,17 +27,14 @@ func NewWireGuardInterface(name string) (*WireGuardInterface, error) {
 	}
 	log.Printf("Created TUN device: %s\n", name)
 
-	// 型アサーションで TUN の内部が想定通りか確認
-	if _, ok := tunDev.(interface {
-		BatchSize() int
-	}); !ok {
-		log.Fatalf("TUN device does not implement BatchSize; likely wrong implementation")
+	bind := conn.NewDefaultBind() // エラー返さない
+	if err != nil {
+		log.Fatalf("failed to create bind: %v", err)
 	}
 
-	log.Printf("Created TUN device: %s", name)
-
 	logger := device.NewLogger(device.LogLevelVerbose, fmt.Sprintf("[WG-%s] ", name))
-	wgDev := device.NewDevice(tunDev, nil, logger)
+
+	wgDev := device.NewDevice(tunDev, bind, logger)
 
 	return &WireGuardInterface{
 		ifName: name,
