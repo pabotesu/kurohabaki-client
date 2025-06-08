@@ -80,21 +80,25 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 		}
 		sb.WriteString("replace_allowed_ips=true\n")
 
+		log.Println("==== Dumping current peer config ====")
+		for _, peer := range cfg.Peers {
+			log.Printf("Peer PublicKey: %x", peer.PublicKey)
+			if peer.Endpoint != nil {
+				log.Printf("  Endpoint: %s", peer.Endpoint.String())
+			}
+			for _, ip := range peer.AllowedIPs {
+				log.Printf("  AllowedIP: %s", ip.String())
+			}
+			if peer.PersistentKeepaliveInterval != nil {
+				log.Printf("  Keepalive: %d", *peer.PersistentKeepaliveInterval)
+			}
+		}
+
 		if err := w.dev.IpcSet(sb.String()); err != nil {
 			return err
 		}
 
 	}
 
-	return nil
-}
-
-func (w *WireGuardInterface) DumpConfig() error {
-	configStr, err := w.dev.IpcGet()
-	if err != nil {
-		return fmt.Errorf("failed to get current config: %w", err)
-	}
-	log.Println("=== WireGuard Current Config ===")
-	log.Println(configStr)
 	return nil
 }
