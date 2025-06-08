@@ -29,6 +29,7 @@ func BuildWGConfig(cfg *config.Config) *WGConfig {
 	privateKey := mustParseKey(cfg.Interface.PrivateKey)
 	// Replace 'ServerPeer' with the correct field name from config.Config, e.g., 'Peer' or 'Server'
 	publicKey := mustParseKey(cfg.ServerConfig.PublicKey)
+
 	devicePrivateKey := device.NoisePrivateKey{}
 	copy(devicePrivateKey[:], privateKey[:])
 	devicePublicKey := device.NoisePublicKey{}
@@ -51,6 +52,7 @@ func BuildWGConfig(cfg *config.Config) *WGConfig {
 				},
 			},
 		},
+		Routes: cfg.Interface.Routes,
 	}
 }
 
