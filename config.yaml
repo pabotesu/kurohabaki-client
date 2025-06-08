@@ -1,0 +1,14 @@
+# Client YAML configuration
+interface:
+  private_key: <YOUR_PRIVATE_KEY_HERE>
+  address: <NODE_ADDRESS_HERE>
+  dns: <DNS_SERVER_IP_ADDRESS>
+  routes:
+    - <ROUTE_IP_ADDRESS>/24
+server_peer:
+  public_key: <KUROHABAKI-SERVER_PUBLIC_KEY_HERE>
+  endpoint: <KUROHABAKI-SERVER_IP_ADDRESS>:<PORT>
+  allowed_ips: <KUROHABAKI-SERVER_IP_ADDRESS>/32
+  persistent_keepalive: 5
+etcd:
+  endpoint: <ETCD_SERVER_IP_ADDRESS>:<PORT>
