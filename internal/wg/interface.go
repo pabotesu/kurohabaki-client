@@ -83,6 +83,8 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 		if err := w.dev.IpcSet(sb.String()); err != nil {
 			return err
 		}
+
+		fmt.Println("== UAPI Config ==\n" + sb.String())
 	}
 
 	return nil
