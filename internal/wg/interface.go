@@ -84,8 +84,17 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 			return err
 		}
 
-		fmt.Println("== UAPI Config ==\n" + sb.String())
 	}
 
+	return nil
+}
+
+func (w *WireGuardInterface) DumpConfig() error {
+	configStr, err := w.dev.IpcGet()
+	if err != nil {
+		return fmt.Errorf("failed to get current config: %w", err)
+	}
+	fmt.Println("=== WireGuard Current Config ===")
+	fmt.Println(configStr)
 	return nil
 }
