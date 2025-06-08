@@ -27,10 +27,7 @@ func NewWireGuardInterface(name string) (*WireGuardInterface, error) {
 	}
 	log.Printf("Created TUN device: %s\n", name)
 
-	bind := conn.NewDefaultBind() // エラー返さない
-	if err != nil {
-		log.Fatalf("failed to create bind: %v", err)
-	}
+	bind := conn.NewDefaultBind()
 
 	logger := device.NewLogger(device.LogLevelVerbose, fmt.Sprintf("[WG-%s] ", name))
 

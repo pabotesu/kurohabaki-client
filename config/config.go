@@ -7,24 +7,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type InterfaceConfig struct {
+	PrivateKey string `mapstructure:"private_key"`
+	Address    string `mapstructure:"address"`
+	DNS        string `mapstructure:"dns"`
+}
+
+type ServerPeer struct {
+	PublicKey           string `mapstructure:"public_key"`
+	Endpoint            string `mapstructure:"endpoint"`
+	AllowedIPs          string `mapstructure:"allowed_ips"`
+	PersistentKeepalive int    `mapstructure:"persistent_keepalive"`
+}
+
 type Config struct {
-	Interface struct {
-		PrivateKey string   `yaml:"private_key"`
-		Address    string   `yaml:"address"`
-		DNS        string   `yaml:"dns"`
-		Routes     []string `yaml:"routes"`
-	} `yaml:"interface"`
-
-	ServerPeer struct {
-		PublicKey           string `yaml:"public_key"`
-		Endpoint            string `yaml:"endpoint"`
-		AllowedIPs          string `yaml:"allowed_ips"`
-		PersistentKeepalive int    `yaml:"persistent_keepalive"`
-	} `yaml:"server_peer"`
-
-	Etcd struct {
-		Endpoint string `yaml:"endpoint"`
-	} `yaml:"etcd"`
+	Interface    InterfaceConfig `mapstructure:"interface"`
+	ServerConfig ServerPeer      `mapstructure:"peer"`
+	Etcd         struct {
+		Endpoint string `mapstructure:"endpoint"`
+	} `mapstructure:"etcd"`
 }
 
 func Load(path string) (*Config, error) {

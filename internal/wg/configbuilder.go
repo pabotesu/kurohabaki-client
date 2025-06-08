@@ -26,13 +26,14 @@ type WGPeerConfig struct {
 
 func BuildWGConfig(cfg *config.Config) *WGConfig {
 	privateKey := mustParseKey(cfg.Interface.PrivateKey)
-	publicKey := mustParseKey(cfg.ServerPeer.PublicKey)
+	// Replace 'ServerPeer' with the correct field name from config.Config, e.g., 'Peer' or 'Server'
+	publicKey := mustParseKey(cfg.ServerConfig.PublicKey)
 	devicePrivateKey := device.NoisePrivateKey{}
 	copy(devicePrivateKey[:], privateKey[:])
 	devicePublicKey := device.NoisePublicKey{}
 	copy(devicePublicKey[:], publicKey[:])
-	endpoint := resolveUDPAddr(cfg.ServerPeer.Endpoint)
-	allowedIP := parseCIDR(cfg.ServerPeer.AllowedIPs)
+	endpoint := resolveUDPAddr(cfg.ServerConfig.Endpoint)
+	allowedIP := parseCIDR(cfg.ServerConfig.AllowedIPs)
 
 	return &WGConfig{
 		PrivateKey:   &devicePrivateKey,
@@ -42,7 +43,7 @@ func BuildWGConfig(cfg *config.Config) *WGConfig {
 			{
 				PublicKey:                   devicePublicKey,
 				Endpoint:                    endpoint,
-				PersistentKeepaliveInterval: uint16Ptr(cfg.ServerPeer.PersistentKeepalive),
+				PersistentKeepaliveInterval: uint16Ptr(cfg.ServerConfig.PersistentKeepalive),
 				ReplaceAllowedIPs:           true,
 				AllowedIPs: []net.IPNet{
 					allowedIP,
