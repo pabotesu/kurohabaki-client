@@ -84,7 +84,14 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 		if err := w.dev.IpcSet(sb.String()); err != nil {
 			return err
 		}
-
+	}
+	// Add route to the peer subnet (Linux only)
+	if cfg.RouteSubnet != "" {
+		log.Printf("Adding route to %s via %s", cfg.RouteSubnet, w.ifName)
+		cmd := exec.Command("ip", "route", "add", cfg.RouteSubnet, "dev", w.ifName)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to add route: %w", err)
+		}
 	}
 
 	return nil

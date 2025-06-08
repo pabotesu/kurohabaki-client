@@ -14,6 +14,7 @@ type WGConfig struct {
 	ListenPort   *int
 	ReplacePeers bool
 	Peers        []WGPeerConfig
+	RouteSubnet  string
 }
 
 type WGPeerConfig struct {
