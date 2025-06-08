@@ -94,7 +94,7 @@ func (w *WireGuardInterface) DumpConfig() error {
 	if err != nil {
 		return fmt.Errorf("failed to get current config: %w", err)
 	}
-	fmt.Println("=== WireGuard Current Config ===")
-	fmt.Println(configStr)
+	log.Println("=== WireGuard Current Config ===")
+	log.Println(configStr)
 	return nil
 }
