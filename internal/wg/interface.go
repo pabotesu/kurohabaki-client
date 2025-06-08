@@ -60,6 +60,19 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 	if err := w.dev.IpcSet(fmt.Sprintf("private_key=%s\n", privateKeyHex)); err != nil {
 		return fmt.Errorf("failed to set private_key: %w", err)
 	}
+	log.Println("==== Dumping current peer config ====")
+	for _, peer := range cfg.Peers {
+		log.Printf("Peer PublicKey: %x", peer.PublicKey)
+		if peer.Endpoint != nil {
+			log.Printf("  Endpoint: %s", peer.Endpoint.String())
+		}
+		for _, ip := range peer.AllowedIPs {
+			log.Printf("  AllowedIP: %s", ip.String())
+		}
+		if peer.PersistentKeepaliveInterval != nil {
+			log.Printf("  Keepalive: %d", *peer.PersistentKeepaliveInterval)
+		}
+	}
 
 	// Apply peer settings
 	for _, peer := range cfg.Peers {
@@ -79,20 +92,6 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 			sb.WriteString("allowed_ip=" + ipnet.String() + "\n")
 		}
 		sb.WriteString("replace_allowed_ips=true\n")
-
-		log.Println("==== Dumping current peer config ====")
-		for _, peer := range cfg.Peers {
-			log.Printf("Peer PublicKey: %x", peer.PublicKey)
-			if peer.Endpoint != nil {
-				log.Printf("  Endpoint: %s", peer.Endpoint.String())
-			}
-			for _, ip := range peer.AllowedIPs {
-				log.Printf("  AllowedIP: %s", ip.String())
-			}
-			if peer.PersistentKeepaliveInterval != nil {
-				log.Printf("  Keepalive: %d", *peer.PersistentKeepaliveInterval)
-			}
-		}
 
 		if err := w.dev.IpcSet(sb.String()); err != nil {
 			return err

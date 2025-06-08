@@ -41,7 +41,6 @@ var upCmd = &cobra.Command{
 		if err := wgIf.Up(conf); err != nil {
 			return fmt.Errorf("failed to apply WireGuard config: %w", err)
 		}
-
 		log.Println("WireGuard interface is up")
 		// Prevent process from exiting to keep interface alive
 
