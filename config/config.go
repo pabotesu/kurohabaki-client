@@ -8,10 +8,10 @@ import (
 )
 
 type InterfaceConfig struct {
-	PrivateKey  string `yaml:"private_key"`
-	Address     string `yaml:"address"`
-	DNS         string `yaml:"dns"`
-	RouteSubnet string `yaml:"route_subnet"`
+	PrivateKey string   `yaml:"private_key"`
+	Address    string   `yaml:"address"`
+	DNS        string   `yaml:"dns"`
+	Routes     []string `yaml:"routes"`
 }
 
 type ServerPeer struct {
