@@ -43,7 +43,8 @@ var upCmd = &cobra.Command{
 		}
 
 		log.Println("WireGuard interface is up")
-		return nil
+		// Prevent process from exiting to keep interface alive
+		select {}
 	},
 }
 
