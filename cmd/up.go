@@ -42,12 +42,12 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("failed to apply WireGuard config: %w", err)
 		}
 
-		log.Println("WireGuard interface is up")
-		// Prevent process from exiting to keep interface alive
-
 		if err := wgIf.DumpConfig(); err != nil {
 			log.Printf("Failed to dump config: %v", err)
 		}
+
+		log.Println("WireGuard interface is up")
+		// Prevent process from exiting to keep interface alive
 
 		select {}
 
