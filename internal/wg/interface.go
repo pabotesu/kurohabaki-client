@@ -1,7 +1,7 @@
 package wg
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os/exec"
@@ -56,9 +56,9 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 	defer w.lock.Unlock()
 
 	// Encode private key to base64
-	base64PrivateKey := base64.StdEncoding.EncodeToString((*cfg.PrivateKey)[:])
-	if err := w.dev.IpcSet(fmt.Sprintf("private_key=%s\n", base64PrivateKey)); err != nil {
-		return err
+	privateKeyHex := hex.EncodeToString((*cfg.PrivateKey)[:])
+	if err := w.dev.IpcSet(fmt.Sprintf("private_key=%s\n", privateKeyHex)); err != nil {
+		return fmt.Errorf("failed to set private_key: %w", err)
 	}
 
 	// Apply peer settings
@@ -66,8 +66,8 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 		var sb strings.Builder
 
 		// Encode public key to base64
-		base64PublicKey := base64.StdEncoding.EncodeToString(peer.PublicKey[:])
-		sb.WriteString("public_key=" + base64PublicKey + "\n")
+		publicKeyHex := hex.EncodeToString(peer.PublicKey[:])
+		sb.WriteString("public_key=" + publicKeyHex + "\n")
 
 		if peer.Endpoint != nil {
 			sb.WriteString("endpoint=" + peer.Endpoint.String() + "\n")
