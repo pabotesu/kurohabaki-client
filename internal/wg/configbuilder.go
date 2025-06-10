@@ -101,10 +101,11 @@ func ConvertNodesToPeers(nodes []etcd.Node) ([]WGPeerConfig, error) {
 		}
 
 		peers = append(peers, WGPeerConfig{
-			PublicKey:         pubKey,
-			Endpoint:          endpoint,
-			AllowedIPs:        []net.IPNet{*ipnet},
-			ReplaceAllowedIPs: true,
+			PublicKey:                   pubKey,
+			Endpoint:                    endpoint,
+			AllowedIPs:                  []net.IPNet{*ipnet},
+			ReplaceAllowedIPs:           true,
+			PersistentKeepaliveInterval: uint16Ptr(5),
 		})
 	}
 	return peers, nil
