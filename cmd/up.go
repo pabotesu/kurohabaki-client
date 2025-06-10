@@ -77,8 +77,6 @@ var upCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(upCmd)
-	upCmd.Flags().StringVar(&configPath, "config", "config.yaml", "Path to config file")
 
 	logFile, err := os.OpenFile("client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -87,4 +85,7 @@ func init() {
 	multi := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(multi)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
+	rootCmd.AddCommand(upCmd)
+	upCmd.Flags().StringVar(&configPath, "config", "config.yaml", "Path to config file")
 }
