@@ -59,8 +59,16 @@ var upCmd = &cobra.Command{
 		defer etcdCli.Close()
 
 		selfPubKey := base64.StdEncoding.EncodeToString(conf.Peers[0].PublicKey[:])
+		log.Printf("🔎 Peer count in conf: %d", len(conf.Peers))
+		log.Printf("✅ Peers in config: %d", len(conf.Peers))
+		log.Printf("✅ PublicKey (self): %s", selfPubKey)
+		log.Printf("✅ etcd endpoint: %s", cfg.Etcd.Endpoint)
+		log.Println("✅ Starting Agent...")
+
 		a := agent.New(wgIf, etcdCli, selfPubKey)
 		a.Run(context.Background())
+		log.Println("🟢 Agent.Run started")
+		log.Println("🟢 Launching StartPeerWatcher goroutine")
 
 		return nil
 	},

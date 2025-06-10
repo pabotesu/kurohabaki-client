@@ -27,6 +27,8 @@ func New(wgIf *wg.WireGuardInterface, etcdClient *clientv3.Client, selfPubKey st
 }
 
 func (a *Agent) Run(ctx context.Context) {
+	log.Println("🟢 Agent.Run started")
+
 	ctx, cancel := context.WithCancel(ctx)
 	a.cancel = cancel
 
@@ -40,6 +42,7 @@ func (a *Agent) Run(ctx context.Context) {
 	}()
 
 	// Start peer watcher
+	log.Println("🟢 Launching StartPeerWatcher goroutine")
 	go StartPeerWatcher(ctx, a.etcdClient, a.wgIf, a.selfPubKey)
 
 	// Block until cancelled
