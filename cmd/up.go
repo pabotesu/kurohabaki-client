@@ -78,7 +78,7 @@ var upCmd = &cobra.Command{
 
 func init() {
 
-	logFile, err := os.OpenFile("client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logFile, err := os.OpenFile("/tmp/client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		log.Fatalf("❌ Failed to open log file: %v", err)
 	}
