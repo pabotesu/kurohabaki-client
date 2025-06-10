@@ -66,11 +66,11 @@ var upCmd = &cobra.Command{
 		log.Println("✅ Starting Agent...")
 
 		a := agent.New(wgIf, etcdCli, selfPubKey)
-		a.Run(context.Background())
+		go a.Run(context.Background()) // ← 非同期に実行！
 		log.Println("🟢 Agent.Run started")
 		log.Println("🟢 Launching StartPeerWatcher goroutine")
 
-		return nil
+		select {}
 	},
 }
 
