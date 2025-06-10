@@ -33,5 +33,6 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	log.Println("kurohabaki client starting...")
+	log.Println("init log: should go through custom logger")
 	cmd.Execute()
 }
