@@ -5,6 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pabotesu/kurohabaki-client/config"
@@ -65,12 +68,27 @@ var upCmd = &cobra.Command{
 		log.Printf("✅ etcd endpoint: %s", cfg.Etcd.Endpoint)
 		log.Println("✅ Starting Agent...")
 
-		a := agent.New(wgIf, etcdCli, selfPubKey)
-		go a.Run(context.Background()) // ← 非同期に実行！
-		log.Println("🟢 Agent.Run started")
-		log.Println("🟢 Launching StartPeerWatcher goroutine")
+		// Graceful shutdown on SIGINT/SIGTERM
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-		select {}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		a := agent.New(wgIf, etcdCli, selfPubKey)
+
+		// Handle signals for graceful shutdown
+		go func() {
+			sig := <-sigCh
+			log.Printf("🛑 Caught signal: %v, shutting down...", sig)
+			cancel()
+		}()
+
+		// Start the agent
+		a.Run(ctx)
+
+		log.Println("🏁 Agent stopped, exiting normally.")
+		return nil
 	},
 }
 
