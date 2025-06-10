@@ -15,6 +15,7 @@ import (
 	"github.com/pabotesu/kurohabaki-client/internal/wg"
 	"github.com/spf13/cobra"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 var configPath string
@@ -61,7 +62,12 @@ var upCmd = &cobra.Command{
 		}
 		defer etcdCli.Close()
 
-		selfPubKey := base64.StdEncoding.EncodeToString(conf.Peers[0].PublicKey[:])
+		privKey, err := wgtypes.ParseKey(cfg.Interface.PrivateKey)
+		if err != nil {
+			return fmt.Errorf("failed to parse private key: %w", err)
+		}
+		pubKey := privKey.PublicKey()
+		selfPubKey := base64.StdEncoding.EncodeToString(pubKey[:])
 		log.Printf("🔑 selfPubKey: %s", selfPubKey)
 		log.Printf("🔎 Peer count in conf: %d", len(conf.Peers))
 		log.Printf("✅ Peers in config: %d", len(conf.Peers))
