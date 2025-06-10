@@ -98,3 +98,39 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 
 	return nil
 }
+
+func (w *WireGuardInterface) UpdatePeers(peers []WGPeerConfig) error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	var sb strings.Builder
+
+	for _, peer := range peers {
+		publicKeyHex := hex.EncodeToString(peer.PublicKey[:])
+		sb.WriteString("public_key=" + publicKeyHex + "\n")
+
+		if peer.Endpoint != nil {
+			sb.WriteString("endpoint=" + peer.Endpoint.String() + "\n")
+		}
+		if peer.PersistentKeepaliveInterval != nil {
+			sb.WriteString(fmt.Sprintf("persistent_keepalive_interval=%d\n", *peer.PersistentKeepaliveInterval))
+		}
+
+		sb.WriteString("replace_allowed_ips=true\n")
+		for _, ipnet := range peer.AllowedIPs {
+			sb.WriteString("allowed_ip=" + ipnet.String() + "\n")
+		}
+	}
+
+	return w.dev.IpcSet(sb.String())
+}
+
+// Close shuts down the WireGuard device.
+func (w *WireGuardInterface) Close() {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	if w.dev != nil {
+		w.dev.Close()
+	}
+}

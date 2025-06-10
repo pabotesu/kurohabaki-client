@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/pabotesu/kurohabaki-client/config"
+	"github.com/pabotesu/kurohabaki-client/internal/etcd"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -84,4 +85,55 @@ func parseCIDR(cidr string) net.IPNet {
 func uint16Ptr(v int) *uint16 {
 	u := uint16(v)
 	return &u
+}
+
+func ConvertNodesToPeers(nodes []etcd.Node) ([]WGPeerConfig, error) {
+	var peers []WGPeerConfig
+	for _, n := range nodes {
+		pubKey := mustParseDevicePublicKey(n.PublicKey)
+		endpoint, err := net.ResolveUDPAddr("udp", n.Endpoint)
+		if err != nil {
+			return nil, err
+		}
+		_, ipnet, err := net.ParseCIDR(n.IP + "/32")
+		if err != nil {
+			return nil, err
+		}
+
+		peers = append(peers, WGPeerConfig{
+			PublicKey:         pubKey,
+			Endpoint:          endpoint,
+			AllowedIPs:        []net.IPNet{*ipnet},
+			ReplaceAllowedIPs: true,
+		})
+	}
+	return peers, nil
+}
+
+// mustParseDevicePublicKey converts a base64 WireGuard key string to wgtypes.Key or panics if invalid.
+func mustParseDevicePublicKey(b64 string) device.NoisePublicKey {
+	key := mustParseKey(b64)
+	var npk device.NoisePublicKey
+	copy(npk[:], key[:])
+	return npk
+}
+
+func SamePeers(a, b []WGPeerConfig) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].PublicKey != b[i].PublicKey {
+			return false
+		}
+		if a[i].Endpoint == nil || b[i].Endpoint == nil {
+			if a[i].Endpoint != b[i].Endpoint {
+				return false
+			}
+		} else if a[i].Endpoint.String() != b[i].Endpoint.String() {
+			return false
+		}
+		// 他のフィールドも必要なら追加
+	}
+	return true
 }
