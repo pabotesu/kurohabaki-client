@@ -107,7 +107,6 @@ func (w *WireGuardInterface) UpdatePeers(peers []WGPeerConfig) error {
 
 	for _, peer := range peers {
 		publicKeyHex := hex.EncodeToString(peer.PublicKey[:])
-		log.Printf("👤 Peer PublicKey: %s", publicKeyHex)
 		sb.WriteString("public_key=" + publicKeyHex + "\n")
 
 		if peer.Endpoint != nil {
@@ -120,8 +119,8 @@ func (w *WireGuardInterface) UpdatePeers(peers []WGPeerConfig) error {
 		sb.WriteString("replace_allowed_ips=true\n")
 		for _, ipnet := range peer.AllowedIPs {
 			sb.WriteString("allowed_ip=" + ipnet.String() + "\n")
+			log.Printf("📌 AllowedIP: %s", ipnet.String())
 		}
-		log.Printf("📌 AllowedIP: %s", ip.String())
 	}
 
 	return w.dev.IpcSet(sb.String())
