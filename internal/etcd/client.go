@@ -3,6 +3,7 @@ package etcd
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ func FetchPeers(cli *clientv3.Client, selfPubKey string) ([]Node, error) {
 		field := parts[4]
 
 		if pubKey == selfPubKey {
+			log.Printf("🚫 Skipping self pubKey: %s", pubKey)
 			continue
 		}
 
