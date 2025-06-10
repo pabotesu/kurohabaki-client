@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/pabotesu/kurohabaki-client/config"
@@ -77,4 +79,12 @@ var upCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(upCmd)
 	upCmd.Flags().StringVar(&configPath, "config", "config.yaml", "Path to config file")
+
+	logFile, err := os.OpenFile("client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatalf("❌ Failed to open log file: %v", err)
+	}
+	multi := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(multi)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 }
