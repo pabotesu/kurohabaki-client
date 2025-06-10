@@ -1,12 +1,17 @@
 package cmd
 
 import (
+	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/pabotesu/kurohabaki-client/config"
+	"github.com/pabotesu/kurohabaki-client/internal/agent"
 	"github.com/pabotesu/kurohabaki-client/internal/wg"
 	"github.com/spf13/cobra"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 var configPath string
@@ -44,8 +49,20 @@ var upCmd = &cobra.Command{
 		log.Println("WireGuard interface is up")
 		// Prevent process from exiting to keep interface alive
 
-		select {}
+		etcdCli, err := clientv3.New(clientv3.Config{
+			Endpoints:   []string{cfg.Etcd.Endpoint},
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to connect to etcd: %w", err)
+		}
+		defer etcdCli.Close()
 
+		selfPubKey := base64.StdEncoding.EncodeToString(conf.Peers[0].PublicKey[:])
+		a := agent.New(wgIf, etcdCli, selfPubKey)
+		a.Run(context.Background())
+
+		return nil
 	},
 }
 
