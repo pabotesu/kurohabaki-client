@@ -62,6 +62,7 @@ var upCmd = &cobra.Command{
 		defer etcdCli.Close()
 
 		selfPubKey := base64.StdEncoding.EncodeToString(conf.Peers[0].PublicKey[:])
+		log.Printf("🔑 selfPubKey: %s", selfPubKey)
 		log.Printf("🔎 Peer count in conf: %d", len(conf.Peers))
 		log.Printf("✅ Peers in config: %d", len(conf.Peers))
 		log.Printf("✅ PublicKey (self): %s", selfPubKey)
