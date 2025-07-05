@@ -13,6 +13,11 @@ var rootCmd = &cobra.Command{
 	Long:  `Kurohabaki is a lightweight WireGuard-based P2P networking client.`,
 }
 
+func init() {
+	// vewrsion flag
+	rootCmd.Version = "0.1.0"
+}
+
 // Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
