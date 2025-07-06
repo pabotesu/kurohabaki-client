@@ -3,12 +3,31 @@ package etcd
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
+	"github.com/pabotesu/kurohabaki-client/internal/logger"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 )
+
+// ConfigureEtcdLogger sets up etcd client logging based on debug mode
+func ConfigureEtcdLogger(debug bool) {
+	var zapLogConfig zap.Config
+	if debug {
+		// In debug mode, use development config with more verbose output
+		zapLogConfig = zap.NewDevelopmentConfig()
+	} else {
+		// In production mode, only show critical errors
+		zapLogConfig = zap.NewProductionConfig()
+		zapLogConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+	}
+
+	zapLogger, _ := zapLogConfig.Build()
+
+	// Set the global zap logger which etcd client will use
+	zap.ReplaceGlobals(zapLogger)
+}
 
 type Node struct {
 	PublicKey string
@@ -37,7 +56,7 @@ func FetchPeers(cli *clientv3.Client, selfPubKey string) ([]Node, error) {
 		field := parts[4]
 
 		if pubKey == selfPubKey {
-			log.Printf("🚫 Skipping self pubKey: %s", pubKey)
+			logger.Printf("🚫 Skipping self pubKey: %s", pubKey)
 			continue
 		}
 

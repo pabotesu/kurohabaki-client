@@ -11,10 +11,12 @@ import (
 
 	"github.com/pabotesu/kurohabaki-client/config"
 	"github.com/pabotesu/kurohabaki-client/internal/agent"
+	"github.com/pabotesu/kurohabaki-client/internal/etcd"
 	"github.com/pabotesu/kurohabaki-client/internal/logger"
 	"github.com/pabotesu/kurohabaki-client/internal/wg"
 	"github.com/spf13/cobra"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -60,9 +62,17 @@ var upCmd = &cobra.Command{
 		logger.Println("WireGuard interface is up")
 		// Prevent process from exiting to keep interface alive
 
+		// Configure etcd logging based on debug mode
+		etcd.ConfigureEtcdLogger(debugMode)
+
+		// Get the logger
+		zapLogger := zap.L()
+
+		// Initialize etcd client with custom logger
 		etcdCli, err := clientv3.New(clientv3.Config{
 			Endpoints:   []string{cfg.Etcd.Endpoint},
 			DialTimeout: 5 * time.Second,
+			Logger:      zapLogger, // Add this line
 		})
 		if err != nil {
 			return fmt.Errorf("failed to connect to etcd: %w", err)
