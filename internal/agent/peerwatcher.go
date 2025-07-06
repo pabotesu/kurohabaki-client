@@ -12,7 +12,7 @@ import (
 
 func StartPeerWatcher(ctx context.Context, cli *clientv3.Client, wgIf *wg.WireGuardInterface, selfPubKey string) {
 	logger.Println("StartPeerWatcher: launched") // debug mode only
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	var prevPeers []wg.WGPeerConfig
@@ -30,7 +30,6 @@ func StartPeerWatcher(ctx context.Context, cli *clientv3.Client, wgIf *wg.WireGu
 
 			peers, err := etcd.FetchPeers(cli, selfPubKey)
 			if err != nil {
-				// エラーは常に表示（重要な問題なので）
 				logger.Printf("Failed to fetch peers: %s", err.Error())
 				continue
 			}
