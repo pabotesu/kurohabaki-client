@@ -2,11 +2,8 @@ package agent
 
 import (
 	"context"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
+	"github.com/pabotesu/kurohabaki-client/internal/logger"
 	"github.com/pabotesu/kurohabaki-client/internal/wg"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -27,28 +24,32 @@ func New(wgIf *wg.WireGuardInterface, etcdClient *clientv3.Client, selfPubKey st
 }
 
 func (a *Agent) Run(ctx context.Context) {
-	log.Println("🟢 Agent.Run started")
+	// Log agent startup (debug mode only)
+	logger.Println("🟢 Agent.Run started")
 
 	ctx, cancel := context.WithCancel(ctx)
 	a.cancel = cancel
 
-	// Signal handling for graceful shutdown
-	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		sig := <-sigCh
-		log.Printf("Received signal: %v, shutting down agent...", sig)
-		cancel()
-	}()
+	// Note: Signal handling is managed in the up.go command,
+	// removing duplicate signal handling here
 
-	// Start peer watcher
-	log.Println("🟢 Launching StartPeerWatcher goroutine")
+	// Start peer watcher (debug mode only)
+	logger.Println("🟢 Launching StartPeerWatcher goroutine")
 	go StartPeerWatcher(ctx, a.etcdClient, a.wgIf, a.selfPubKey)
 
 	// Block until cancelled
 	<-ctx.Done()
-	log.Println("Agent shutting down...")
 
-	// Clean up
+	// Always log shutdown as it's important operational info
+	logger.Println("Agent shutting down...")
+
+	// Clean up resources
 	a.wgIf.Close()
+}
+
+// Stop cancels the agent's context, triggering shutdown
+func (a *Agent) Stop() {
+	if a.cancel != nil {
+		a.cancel()
+	}
 }

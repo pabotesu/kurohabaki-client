@@ -112,6 +112,9 @@ var upCmd = &cobra.Command{
 		// Handle signals for graceful shutdown
 		go func() {
 			sig := <-sigCh
+			// Log the signal caught
+			logger.Printf("Received signal: %v, shutting down agent...", sig)
+			// Log the signal caught
 			logger.Printf("🛑 Caught signal: %v, shutting down...", sig)
 			cancel()
 		}()
