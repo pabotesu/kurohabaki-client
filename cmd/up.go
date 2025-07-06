@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,19 +11,27 @@ import (
 
 	"github.com/pabotesu/kurohabaki-client/config"
 	"github.com/pabotesu/kurohabaki-client/internal/agent"
+	"github.com/pabotesu/kurohabaki-client/internal/logger"
 	"github.com/pabotesu/kurohabaki-client/internal/wg"
 	"github.com/spf13/cobra"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-var configPath string
+var (
+	configPath string
+	debugMode  bool // Debug flag specific to up command
+)
 
 var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Start WireGuard interface and connect to peers",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// Initialize logger with debug mode setting
+		logger.Init(debugMode)
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Println("Bringing up WireGuard interface...")
+		logger.Println("Bringing up WireGuard interface...")
 
 		cfg, err := config.Load(configPath)
 		if err != nil {
@@ -50,7 +57,7 @@ var upCmd = &cobra.Command{
 		if err := wgIf.Up(conf); err != nil {
 			return fmt.Errorf("failed to apply WireGuard config: %w", err)
 		}
-		log.Println("WireGuard interface is up")
+		logger.Println("WireGuard interface is up")
 		// Prevent process from exiting to keep interface alive
 
 		etcdCli, err := clientv3.New(clientv3.Config{
@@ -68,12 +75,12 @@ var upCmd = &cobra.Command{
 		}
 		pubKey := privKey.PublicKey()
 		selfPubKey := base64.StdEncoding.EncodeToString(pubKey[:])
-		log.Printf("🔑 selfPubKey: %s", selfPubKey)
-		log.Printf("🔎 Peer count in conf: %d", len(conf.Peers))
-		log.Printf("✅ Peers in config: %d", len(conf.Peers))
-		log.Printf("✅ PublicKey (self): %s", selfPubKey)
-		log.Printf("✅ etcd endpoint: %s", cfg.Etcd.Endpoint)
-		log.Println("✅ Starting Agent...")
+		logger.Printf("🔑 selfPubKey: %s", selfPubKey)
+		logger.Printf("🔎 Peer count in conf: %d", len(conf.Peers))
+		logger.Printf("✅ Peers in config: %d", len(conf.Peers))
+		logger.Printf("✅ PublicKey (self): %s", selfPubKey)
+		logger.Printf("✅ etcd endpoint: %s", cfg.Etcd.Endpoint)
+		logger.Println("✅ Starting Agent...")
 
 		// Graceful shutdown on SIGINT/SIGTERM
 		sigCh := make(chan os.Signal, 1)
@@ -87,14 +94,14 @@ var upCmd = &cobra.Command{
 		// Handle signals for graceful shutdown
 		go func() {
 			sig := <-sigCh
-			log.Printf("🛑 Caught signal: %v, shutting down...", sig)
+			logger.Printf("🛑 Caught signal: %v, shutting down...", sig)
 			cancel()
 		}()
 
 		// Start the agent
 		a.Run(ctx)
 
-		log.Println("🏁 Agent stopped, exiting normally.")
+		logger.Println("🏁 Agent stopped, exiting normally.")
 		return nil
 	},
 }
@@ -102,4 +109,5 @@ var upCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(upCmd)
 	upCmd.Flags().StringVar(&configPath, "config", "config.yaml", "Path to config file")
+	upCmd.Flags().BoolVar(&debugMode, "debug", false, "Enable debug logging")
 }
