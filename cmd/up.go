@@ -15,6 +15,7 @@ import (
 	"github.com/pabotesu/kurohabaki-client/internal/agent"
 	"github.com/pabotesu/kurohabaki-client/internal/etcd"
 	"github.com/pabotesu/kurohabaki-client/internal/logger"
+	"github.com/pabotesu/kurohabaki-client/internal/util"
 	"github.com/pabotesu/kurohabaki-client/internal/wg"
 	"github.com/spf13/cobra"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -36,7 +37,7 @@ var upCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check if agent is already running
-		pidFile := "/var/run/kh-client.pid"
+		pidFile := util.GetPidFilePath()
 		if _, err := os.Stat(pidFile); err == nil {
 			return fmt.Errorf("agent is already running. Use 'down' command to stop it first")
 		}
@@ -137,7 +138,22 @@ var upCmd = &cobra.Command{
 				// Parent process - fork and exit
 				cmd := exec.Command(os.Args[0], append([]string{"up", "--config", configPath}, os.Args[2:]...)...)
 				cmd.Env = append(os.Environ(), "KH_BACKGROUND=1")
-				cmd.Start()
+
+				// Redirect stdout and stderr to log file
+				logFilePath := "/var/log/kh-client.log"
+				logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					return fmt.Errorf("failed to open log file: %w", err)
+				}
+				defer logFile.Close()
+
+				cmd.Stdout = logFile
+				cmd.Stderr = logFile
+
+				// Start child process
+				if err := cmd.Start(); err != nil {
+					return fmt.Errorf("failed to start background process: %w", err)
+				}
 
 				// Write PID to file
 				pid := strconv.Itoa(cmd.Process.Pid)
@@ -145,7 +161,7 @@ var upCmd = &cobra.Command{
 					return fmt.Errorf("failed to write PID file: %w", err)
 				}
 
-				logger.Println("Agent started in background with PID: " + pid)
+				logger.Printf("Agent started in background with PID: %s (logs at %s)", pid, logFilePath)
 				return nil
 			}
 
