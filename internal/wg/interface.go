@@ -34,7 +34,8 @@ func NewWireGuardInterface(ifname string) (*WireGuardInterface, error) {
 	// Set log level to error by default; change to LogLevelVerbose for more detailed logs if needed.
 	logLevel := device.LogLevelError // only log errors by default
 
-	// デバッグモードが有効な場合はより詳細なログを表示
+	// If debug mode is enabled, set log level to verbose
+	// This allows for more detailed logging during development or troubleshooting.
 	if logger.IsDebugMode() {
 		logLevel = device.LogLevelVerbose
 	}
@@ -106,10 +107,8 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 			}
 		}
 	}
-
-	// インターフェース起動のログ
+	// Bring the interface up
 	logger.Println("WireGuard interface is up")
-
 	return nil
 }
 
