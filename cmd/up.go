@@ -81,8 +81,9 @@ var upCmd = &cobra.Command{
 
 		// Check etcd health
 		if err := etcd.CheckEtcdHealth(etcdCli); err != nil {
+			// 改行を避け、一貫した形式でログを出力
 			logger.Println("⚠️ Warning: " + err.Error())
-			logger.Println("⚠️ Will continue but peer synchronization may not work")
+			logger.Println("⚠️ Will continue with local configuration but peer discovery may not work")
 			// Don't return error here, allow to continue with local config
 		}
 

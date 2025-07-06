@@ -26,19 +26,19 @@ func StartPeerWatcher(ctx context.Context, cli *clientv3.Client, wgIf *wg.WireGu
 
 		case <-ticker.C:
 			logger.Println("🔵 FetchPeers: start fetching from etcd...")
-			nodes, err := etcd.FetchPeers(cli, selfPubKey)
+			peers, err := etcd.FetchPeers(cli, selfPubKey)
 			if err != nil {
-				// More user-friendly error message without stack trace
-				logger.Printf("❌ %v", err)
+				// Clean, user-friendly error without technical details
+				logger.Println("❌ Failed to fetch peers: " + err.Error())
 				continue
 			}
 
-			logger.Printf("🟢 FetchPeers: %d node(s) fetched", len(nodes))
-			for _, n := range nodes {
+			logger.Printf("🟢 FetchPeers: %d node(s) fetched", len(peers))
+			for _, n := range peers {
 				logger.Printf("🧩 Node: %+v", n)
 			}
 
-			currentPeers, err := wg.ConvertNodesToPeers(nodes)
+			currentPeers, err := wg.ConvertNodesToPeers(peers)
 			if err != nil {
 				logger.Printf("❌ Failed to convert nodes to peers: %v", err)
 				continue

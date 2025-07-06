@@ -15,15 +15,21 @@ import (
 func ConfigureEtcdLogger(debug bool) {
 	var zapLogConfig zap.Config
 	if debug {
-		// In debug mode, use development config with more verbose output
+		// Even in debug mode, we want to limit the verbosity
 		zapLogConfig = zap.NewDevelopmentConfig()
+		// Only show warnings and errors, not debug messages
+		zapLogConfig.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
 	} else {
 		// In production mode, completely suppress etcd logs
 		zapLogConfig = zap.NewProductionConfig()
 		zapLogConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
-		// Disable output for all but the most critical errors
+		// Disable output for all logs
 		zapLogConfig.OutputPaths = []string{"discard"}
 	}
+
+	// Don't show caller or stacktraces even in debug mode
+	zapLogConfig.DisableCaller = true
+	zapLogConfig.DisableStacktrace = true
 
 	zapLogger, _ := zapLogConfig.Build()
 
@@ -101,7 +107,12 @@ func CheckEtcdHealth(cli *clientv3.Client) error {
 
 	_, err := cli.Status(ctx, cli.Endpoints()[0])
 	if err != nil {
-		return fmt.Errorf("etcd server at %s is not reachable: %w", cli.Endpoints()[0], err)
+		// Provide a user-friendly error message
+		if strings.Contains(err.Error(), "context deadline exceeded") ||
+			strings.Contains(err.Error(), "connection refused") {
+			return fmt.Errorf("cannot connect to etcd server at %s - please check that the server is running and reachable", cli.Endpoints()[0])
+		}
+		return fmt.Errorf("etcd health check failed: %v", err)
 	}
 
 	return nil
