@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -33,6 +35,12 @@ var upCmd = &cobra.Command{
 		logger.Init(debugMode)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Check if agent is already running
+		pidFile := "/var/run/kh-client.pid"
+		if _, err := os.Stat(pidFile); err == nil {
+			return fmt.Errorf("agent is already running. Use 'down' command to stop it first")
+		}
+
 		logger.Println("Bringing up WireGuard interface...")
 
 		cfg, err := config.Load(configPath)
@@ -100,30 +108,72 @@ var upCmd = &cobra.Command{
 		logger.Printf("✅ etcd endpoint: %s", cfg.Etcd.Endpoint)
 		logger.Println("✅ Starting Agent...")
 
-		// Graceful shutdown on SIGINT/SIGTERM
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		// Debug mode behavior differs from normal mode
+		if debugMode {
+			// In debug mode, run in foreground with signals
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+			// Handle signals for graceful shutdown
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-		a := agent.New(wgIf, etcdCli, selfPubKey)
+			go func() {
+				sig := <-sigCh
+				logger.Printf("🛑 Caught signal: %v, shutting down...", sig)
+				cancel()
+			}()
 
-		// Handle signals for graceful shutdown
-		go func() {
-			sig := <-sigCh
-			// Log the signal caught
-			logger.Printf("Received signal: %v, shutting down agent...", sig)
-			// Log the signal caught
-			logger.Printf("🛑 Caught signal: %v, shutting down...", sig)
-			cancel()
-		}()
+			a := agent.New(wgIf, etcdCli, selfPubKey)
+			a.Run(ctx)
 
-		// Start the agent
-		a.Run(ctx)
+			logger.Println("🏁 Agent stopped, exiting normally.")
+			return nil
+		} else {
+			// Non-debug mode: run in background
 
-		logger.Println("🏁 Agent stopped, exiting normally.")
-		return nil
+			// Fork a child process that will continue running
+			if os.Getenv("KH_BACKGROUND") != "1" {
+				// Parent process - fork and exit
+				cmd := exec.Command(os.Args[0], append([]string{"up", "--config", configPath}, os.Args[2:]...)...)
+				cmd.Env = append(os.Environ(), "KH_BACKGROUND=1")
+				cmd.Start()
+
+				// Write PID to file
+				pid := strconv.Itoa(cmd.Process.Pid)
+				if err := os.WriteFile(pidFile, []byte(pid), 0644); err != nil {
+					return fmt.Errorf("failed to write PID file: %w", err)
+				}
+
+				logger.Println("Agent started in background with PID: " + pid)
+				return nil
+			}
+
+			// Child process - continue execution
+			ctx := context.Background() // No cancellation in background mode
+
+			// Set up signal handling for clean shutdown
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+			go func() {
+				sig := <-sigCh
+				logger.Printf("Received signal: %v, shutting down...", sig)
+
+				// Clean up PID file
+				os.Remove(pidFile)
+
+				// Exit the process
+				os.Exit(0)
+			}()
+
+			a := agent.New(wgIf, etcdCli, selfPubKey)
+			a.Run(ctx)
+
+			// Should not reach here in normal operation
+			os.Remove(pidFile)
+			return nil
+		}
 	},
 }
 
