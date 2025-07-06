@@ -20,22 +20,27 @@ type WireGuardInterface struct {
 }
 
 // NewWireGuardInterface creates and initializes a new WireGuard TUN interface (Linux only)
-func NewWireGuardInterface(name string) (*WireGuardInterface, error) {
-	tunDev, err := tun.CreateTUN(name, device.DefaultMTU)
+func NewWireGuardInterface(ifname string) (*WireGuardInterface, error) {
+	// Create the TUN device
+	tunDev, err := tun.CreateTUN(ifname, device.DefaultMTU)
 	if err != nil {
-		log.Fatalf("failed to create TUN device: %v", err)
+		return nil, fmt.Errorf("failed to create TUN device: %w", err)
 	}
-	log.Printf("Created TUN device: %s\n", name)
 
-	bind := conn.NewDefaultBind()
+	// Log device creation in debug mode
+	log.Println("Created TUN device:", ifname)
 
-	logger := device.NewLogger(device.LogLevelVerbose, fmt.Sprintf("[WG-%s] ", name))
+	// Set logging for WireGuard device based on debug mode
+	// Set log level to error by default; change to LogLevelVerbose for more detailed logs if needed.
+	logLevel := device.LogLevelError // only log errors by default
 
-	wgDev := device.NewDevice(tunDev, bind, logger)
+	// Uncomment the following line for verbose logging during development:
+	// Create WireGuard device with appropriate log level
+	dev := device.NewDevice(tunDev, conn.NewDefaultBind(), device.NewLogger(logLevel, fmt.Sprintf("[WG-%s] ", ifname)))
 
 	return &WireGuardInterface{
-		ifName: name,
-		dev:    wgDev,
+		ifName: ifname,
+		dev:    dev,
 	}, nil
 }
 

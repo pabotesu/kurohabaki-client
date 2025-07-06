@@ -43,3 +43,8 @@ func Printf(format string, v ...interface{}) {
 	}
 	stdLog.Printf(format, v...)
 }
+
+// IsDebugMode returns the current debug mode status
+func IsDebugMode() bool {
+	return debugMode
+}

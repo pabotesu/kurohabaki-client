@@ -1,12 +1,11 @@
 package main
 
 import (
-	"log"
-
 	"github.com/pabotesu/kurohabaki-client/cmd"
+	"github.com/pabotesu/kurohabaki-client/internal/logger"
 )
 
 func main() {
-	log.Println("kurohabaki client starting...")
+	logger.Println("kurohabaki client starting...")
 	cmd.Execute()
 }
