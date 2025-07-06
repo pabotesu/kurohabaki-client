@@ -81,12 +81,16 @@ var upCmd = &cobra.Command{
 		etcdCli, err := clientv3.New(clientv3.Config{
 			Endpoints:   []string{cfg.Etcd.Endpoint},
 			DialTimeout: 5 * time.Second,
-			Logger:      zapLogger, // Add this line
+			Logger:      zapLogger,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to connect to etcd: %w", err)
 		}
-		defer etcdCli.Close()
+
+		// IMPORTANT: Only close etcdClient in parent process or debug mode
+		if os.Getenv("KH_BACKGROUND") != "1" {
+			defer etcdCli.Close()
+		}
 
 		// Check etcd health
 		if err := etcd.CheckEtcdHealth(etcdCli); err != nil {
@@ -181,7 +185,7 @@ var upCmd = &cobra.Command{
 			// Child process - continue execution
 			logger.Println("Starting agent in background mode...")
 
-			// Create a context that is never cancelled
+			// Create a fresh context that is never cancelled
 			ctx := context.Background()
 
 			// Set up signal handling for clean shutdown
@@ -202,13 +206,41 @@ var upCmd = &cobra.Command{
 			// Start the agent
 			a := agent.New(wgIf, etcdCli, selfPubKey)
 
-			// Run the agent (should block if properly implemented)
-			go a.Run(ctx)
+			// Run agent in a goroutine and monitor for errors
+			errCh := make(chan error, 1)
+			go func() {
+				logger.Println("Starting agent.Run in background...")
 
-			// Create a blocking wait that never returns
-			// This ensures the process stays alive even if Run() returns
+				// Catch panics
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Printf("PANIC in Agent.Run: %v", r)
+						errCh <- fmt.Errorf("agent panicked: %v", r)
+					}
+				}()
+
+				// Run()がエラーを返す場合は、それをキャプチャする
+				a.Run(ctx)
+
+				// Agent.Run does not return an error, so just log and send nil
+				logger.Println("Agent.Run returned (should not happen under normal operation)")
+
+				// エラーかnilかにかかわらず、結果をチャネルに送信
+				errCh <- nil
+			}()
+
+			// Block forever, but also monitor for agent errors
 			logger.Println("Agent running in background mode")
-			select {} // Block forever
+			err := <-errCh
+			if err != nil {
+				logger.Printf("Agent stopped with error: %v", err)
+				os.Remove(pidFile)
+				return fmt.Errorf("agent stopped with error: %w", err)
+			} else {
+				logger.Println("Agent stopped unexpectedly without error")
+				os.Remove(pidFile)
+				return fmt.Errorf("agent stopped unexpectedly")
+			}
 		}
 	},
 }
