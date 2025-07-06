@@ -3,11 +3,11 @@ package wg
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
 	"sync"
 
+	"github.com/pabotesu/kurohabaki-client/internal/logger"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun"
@@ -20,22 +20,32 @@ type WireGuardInterface struct {
 }
 
 // NewWireGuardInterface creates and initializes a new WireGuard TUN interface (Linux only)
-func NewWireGuardInterface(name string) (*WireGuardInterface, error) {
-	tunDev, err := tun.CreateTUN(name, device.DefaultMTU)
+func NewWireGuardInterface(ifname string) (*WireGuardInterface, error) {
+	// Create the TUN device
+	tunDev, err := tun.CreateTUN(ifname, device.DefaultMTU)
 	if err != nil {
-		log.Fatalf("failed to create TUN device: %v", err)
+		return nil, fmt.Errorf("failed to create TUN device: %w", err)
 	}
-	log.Printf("Created TUN device: %s\n", name)
 
-	bind := conn.NewDefaultBind()
+	// TUNデバイス作成のログはデバッグモードでのみ表示されるようにloggerを使用
+	logger.Println("Created TUN device:", ifname)
 
-	logger := device.NewLogger(device.LogLevelVerbose, fmt.Sprintf("[WG-%s] ", name))
+	// Set logging for WireGuard device based on debug mode
+	// Set log level to error by default; change to LogLevelVerbose for more detailed logs if needed.
+	logLevel := device.LogLevelError // only log errors by default
 
-	wgDev := device.NewDevice(tunDev, bind, logger)
+	// If debug mode is enabled, set log level to verbose
+	// This allows for more detailed logging during development or troubleshooting.
+	if logger.IsDebugMode() {
+		logLevel = device.LogLevelVerbose
+	}
+
+	// Create WireGuard device with appropriate log level
+	dev := device.NewDevice(tunDev, conn.NewDefaultBind(), device.NewLogger(logLevel, fmt.Sprintf("[WG-%s] ", ifname)))
 
 	return &WireGuardInterface{
-		ifName: name,
-		dev:    wgDev,
+		ifName: ifname,
+		dev:    dev,
 	}, nil
 }
 
@@ -85,17 +95,20 @@ func (w *WireGuardInterface) Up(cfg *WGConfig) error {
 			return err
 		}
 	}
+
 	// Add route to the peer subnet (Linux only)
 	if len(cfg.Routes) > 0 {
 		for _, route := range cfg.Routes {
-			log.Printf("Adding route to %s via %s", route, w.ifName)
+			// ルート追加のログ
+			logger.Printf("Adding route to %s via %s", route, w.ifName)
 			cmd := exec.Command("ip", "route", "add", route, "dev", w.ifName)
 			if err := cmd.Run(); err != nil {
 				return fmt.Errorf("failed to add route: %w", err)
 			}
 		}
 	}
-
+	// Bring the interface up
+	logger.Println("WireGuard interface is up")
 	return nil
 }
 
@@ -119,7 +132,7 @@ func (w *WireGuardInterface) UpdatePeers(peers []WGPeerConfig) error {
 		sb.WriteString("replace_allowed_ips=true\n")
 		for _, ipnet := range peer.AllowedIPs {
 			sb.WriteString("allowed_ip=" + ipnet.String() + "\n")
-			log.Printf("📌 AllowedIP: %s", ipnet.String())
+			logger.Printf("📌 AllowedIP: %s", ipnet.String())
 		}
 	}
 

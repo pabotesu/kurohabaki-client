@@ -3,12 +3,39 @@ package etcd
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
+	"github.com/pabotesu/kurohabaki-client/internal/logger"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 )
+
+// ConfigureEtcdLogger sets up etcd client logging based on debug mode
+func ConfigureEtcdLogger(debug bool) {
+	var zapLogConfig zap.Config
+	if debug {
+		// Even in debug mode, we want to limit the verbosity
+		zapLogConfig = zap.NewDevelopmentConfig()
+		// Only show warnings and errors, not debug messages
+		zapLogConfig.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
+	} else {
+		// In production mode, completely suppress etcd logs
+		zapLogConfig = zap.NewProductionConfig()
+		zapLogConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+		// Disable output for all logs
+		zapLogConfig.OutputPaths = []string{"discard"}
+	}
+
+	// Don't show caller or stacktraces even in debug mode
+	zapLogConfig.DisableCaller = true
+	zapLogConfig.DisableStacktrace = true
+
+	zapLogger, _ := zapLogConfig.Build()
+
+	// Set the global zap logger which etcd client will use
+	zap.ReplaceGlobals(zapLogger)
+}
 
 type Node struct {
 	PublicKey string
@@ -23,6 +50,11 @@ func FetchPeers(cli *clientv3.Client, selfPubKey string) ([]Node, error) {
 
 	resp, err := cli.Get(ctx, "/kurohabaki/nodes/", clientv3.WithPrefix())
 	if err != nil {
+		// Provide a more user-friendly error message
+		if strings.Contains(err.Error(), "context deadline exceeded") ||
+			strings.Contains(err.Error(), "connection refused") {
+			return nil, fmt.Errorf("cannot connect to etcd server at %s - please check that the server is running and reachable", cli.Endpoints()[0])
+		}
 		return nil, fmt.Errorf("failed to fetch peers from etcd: %w", err)
 	}
 
@@ -37,7 +69,7 @@ func FetchPeers(cli *clientv3.Client, selfPubKey string) ([]Node, error) {
 		field := parts[4]
 
 		if pubKey == selfPubKey {
-			log.Printf("🚫 Skipping self pubKey: %s", pubKey)
+			logger.Printf("🚫 Skipping self pubKey: %s", pubKey)
 			continue
 		}
 
@@ -66,4 +98,22 @@ func FetchPeers(cli *clientv3.Client, selfPubKey string) ([]Node, error) {
 	}
 
 	return peers, nil
+}
+
+// CheckEtcdHealth verifies connectivity to the etcd server
+func CheckEtcdHealth(cli *clientv3.Client) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := cli.Status(ctx, cli.Endpoints()[0])
+	if err != nil {
+		// Provide a user-friendly error message
+		if strings.Contains(err.Error(), "context deadline exceeded") ||
+			strings.Contains(err.Error(), "connection refused") {
+			return fmt.Errorf("cannot connect to etcd server at %s - please check that the server is running and reachable", cli.Endpoints()[0])
+		}
+		return fmt.Errorf("etcd health check failed: %v", err)
+	}
+
+	return nil
 }
