@@ -150,9 +150,22 @@ var upCmd = &cobra.Command{
 				cmd.Stdout = logFile
 				cmd.Stderr = logFile
 
+				// Create a new process group so signals to the parent don't affect the child
+				cmd.SysProcAttr = &syscall.SysProcAttr{
+					Setsid: true, // Start a new session
+				}
+
 				// Start child process
 				if err := cmd.Start(); err != nil {
 					return fmt.Errorf("failed to start background process: %w", err)
+				}
+
+				// Give the child process a moment to initialize
+				time.Sleep(500 * time.Millisecond)
+
+				// Check if the process is still running
+				if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+					return fmt.Errorf("child process exited immediately - check logs at %s", logFilePath)
 				}
 
 				// Write PID to file
@@ -166,7 +179,10 @@ var upCmd = &cobra.Command{
 			}
 
 			// Child process - continue execution
-			ctx := context.Background() // No cancellation in background mode
+			logger.Println("Starting agent in background mode...")
+
+			// Create a context that is never cancelled
+			ctx := context.Background()
 
 			// Set up signal handling for clean shutdown
 			sigCh := make(chan os.Signal, 1)
@@ -183,12 +199,16 @@ var upCmd = &cobra.Command{
 				os.Exit(0)
 			}()
 
+			// Start the agent
 			a := agent.New(wgIf, etcdCli, selfPubKey)
-			a.Run(ctx)
 
-			// Should not reach here in normal operation
-			os.Remove(pidFile)
-			return nil
+			// Run the agent (should block if properly implemented)
+			go a.Run(ctx)
+
+			// Create a blocking wait that never returns
+			// This ensures the process stays alive even if Run() returns
+			logger.Println("Agent running in background mode")
+			select {} // Block forever
 		}
 	},
 }

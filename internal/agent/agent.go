@@ -23,6 +23,7 @@ func New(wgIf *wg.WireGuardInterface, etcdClient *clientv3.Client, selfPubKey st
 	}
 }
 
+// Run should block until context is cancelled
 func (a *Agent) Run(ctx context.Context) {
 	// Log agent startup (debug mode only)
 	logger.Println("🟢 Agent.Run started")
@@ -37,7 +38,7 @@ func (a *Agent) Run(ctx context.Context) {
 	logger.Println("🟢 Launching StartPeerWatcher goroutine")
 	go StartPeerWatcher(ctx, a.etcdClient, a.wgIf, a.selfPubKey)
 
-	// Block until cancelled
+	// Block until context is done - THIS IS CRUCIAL
 	<-ctx.Done()
 
 	// Always log shutdown as it's important operational info
