@@ -18,9 +18,11 @@ func ConfigureEtcdLogger(debug bool) {
 		// In debug mode, use development config with more verbose output
 		zapLogConfig = zap.NewDevelopmentConfig()
 	} else {
-		// In production mode, only show critical errors
+		// In production mode, completely suppress etcd logs
 		zapLogConfig = zap.NewProductionConfig()
 		zapLogConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+		// Disable output for all but the most critical errors
+		zapLogConfig.OutputPaths = []string{"discard"}
 	}
 
 	zapLogger, _ := zapLogConfig.Build()
@@ -42,6 +44,11 @@ func FetchPeers(cli *clientv3.Client, selfPubKey string) ([]Node, error) {
 
 	resp, err := cli.Get(ctx, "/kurohabaki/nodes/", clientv3.WithPrefix())
 	if err != nil {
+		// Provide a more user-friendly error message
+		if strings.Contains(err.Error(), "context deadline exceeded") ||
+			strings.Contains(err.Error(), "connection refused") {
+			return nil, fmt.Errorf("cannot connect to etcd server at %s - please check that the server is running and reachable", cli.Endpoints()[0])
+		}
 		return nil, fmt.Errorf("failed to fetch peers from etcd: %w", err)
 	}
 
@@ -85,4 +92,17 @@ func FetchPeers(cli *clientv3.Client, selfPubKey string) ([]Node, error) {
 	}
 
 	return peers, nil
+}
+
+// CheckEtcdHealth verifies connectivity to the etcd server
+func CheckEtcdHealth(cli *clientv3.Client) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := cli.Status(ctx, cli.Endpoints()[0])
+	if err != nil {
+		return fmt.Errorf("etcd server at %s is not reachable: %w", cli.Endpoints()[0], err)
+	}
+
+	return nil
 }

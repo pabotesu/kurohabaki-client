@@ -79,6 +79,13 @@ var upCmd = &cobra.Command{
 		}
 		defer etcdCli.Close()
 
+		// Check etcd health
+		if err := etcd.CheckEtcdHealth(etcdCli); err != nil {
+			logger.Println("⚠️ Warning: " + err.Error())
+			logger.Println("⚠️ Will continue but peer synchronization may not work")
+			// Don't return error here, allow to continue with local config
+		}
+
 		privKey, err := wgtypes.ParseKey(cfg.Interface.PrivateKey)
 		if err != nil {
 			return fmt.Errorf("failed to parse private key: %w", err)
