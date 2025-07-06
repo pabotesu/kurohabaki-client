@@ -27,7 +27,7 @@ func NewWireGuardInterface(ifname string) (*WireGuardInterface, error) {
 		return nil, fmt.Errorf("failed to create TUN device: %w", err)
 	}
 
-	// TUNデバイス作成のログはデバッグモードでのみ表示されるようにloggerを使用
+	// Log the creation of the TUN device
 	logger.Println("Created TUN device:", ifname)
 
 	// Set logging for WireGuard device based on debug mode
